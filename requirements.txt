@@ -1,6 +1,8 @@
 flask==3.0.0
 google-cloud-translate==3.12.1
+google-cloud-texttospeech==2.14.2
 python-dotenv==1.0.0
 requests==2.31.0
 pyngrok==7.0.0
 gunicorn==21.2.0
+pykakasi==2.3.0
