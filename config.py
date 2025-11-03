@@ -54,6 +54,7 @@ class Config:
         'ml': {'name': 'Malayalam', 'native': 'മലയാളം', 'flag': '🇮🇳', 'translate': 'ml', 'tts': 'ml-IN'},
         'kn': {'name': 'Kannada', 'native': 'ಕನ್ನಡ', 'flag': '🇮🇳', 'translate': 'kn', 'tts': 'kn-IN'},
         'mr': {'name': 'Marathi', 'native': 'मराठी', 'flag': '🇮🇳', 'translate': 'mr', 'tts': 'mr-IN'},
+        'pa': {'name': 'Punjabi', 'native': 'ਪੰਜਾਬੀ', 'flag': 'IN', 'translate': 'pa', 'tts': 'pa-IN'},
         'gu': {'name': 'Gujarati', 'native': 'ગુજરાતી', 'flag': '🇮🇳', 'translate': 'gu', 'tts': 'gu-IN'},
         
         # Other Languages
