@@ -11,6 +11,27 @@ from datetime import datetime
 from typing import Optional
 import time
 
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/webhook', methods=['GET'])
+def webhook():
+    VERIFY_TOKEN = "my_secret_verify_token_12345"  # Make sure this matches Facebook Webhook page
+    mode = request.args.get("hub.mode")
+    challenge = request.args.get("hub.challenge")
+    verify_token = request.args.get("hub.verify_token")
+
+    if mode == "subscribe" and verify_token == VERIFY_TOKEN:
+        return challenge, 200
+    else:
+        return "Verification failed", 403
+
+# Your other bot logic and routes (POST chatbot handling) stay as they are!
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+
+
 load_dotenv()
 
 logging.basicConfig(
@@ -174,3 +195,5 @@ if __name__ == '__main__':
     logger.info(f"Starting Bot on port {port}")
     logger.info("All systems ready!")
     app.run(host='0.0.0.0', port=port, debug=debug)
+    
+    
