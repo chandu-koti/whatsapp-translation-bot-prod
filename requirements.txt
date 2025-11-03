@@ -7,3 +7,4 @@ requests==2.31.0
 pyngrok==7.0.0
 gunicorn==21.2.0
 pykakasi==2.3.0
+setuptools<81
