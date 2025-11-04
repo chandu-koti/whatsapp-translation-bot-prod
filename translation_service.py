@@ -5,170 +5,97 @@ import logging
 from typing import Dict, Optional, List
 from google.cloud import translate_v2 as translate
 from google.cloud import texttospeech
-from google.api_core import exceptions
 import pykakasi
-from config import Config
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class TranslationService:
     def __init__(self):
-        """Initialize Google Cloud Translation and TTS clients"""
-        self.translate_client = None
-        self.tts_client = None
-        
-        # ✅ FIXED: Get supported languages dynamically from Config
-        self.supported_languages = Config.get_supported_language_codes()
-        logger.info(f"✅ Loaded {len(self.supported_languages)} supported languages")
-        
+        credentials_json_b64 = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        if not credentials_json_b64:
+            logger.error("GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable not set!")
+            self.translate_client = None
+            self.tts_client = None
+            return
         try:
-            # ✅ NEW: Load credentials from environment variable instead of file
-            credentials_json_b64 = os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON')
-            
-            if not credentials_json_b64:
-                logger.error("❌ GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable not set")
-                logger.error("Make sure to set this in Render environment variables!")
-                return
-            
-            # Decode BASE64 to JSON string
-            try:
-                credentials_json_str = base64.b64decode(credentials_json_b64).decode('utf-8')
-                credentials_dict = json.loads(credentials_json_str)
-                logger.info("✅ Successfully decoded BASE64 credentials")
-            except Exception as e:
-                logger.error(f"❌ Failed to decode BASE64 credentials: {str(e)}")
-                return
-            
-            # Write credentials to temporary location for Google Cloud SDK
-            # This is required by google-cloud-translate
-            credentials_path = '/tmp/google-credentials.json'
-            with open(credentials_path, 'w') as f:
+            credentials_json_str = base64.b64decode(credentials_json_b64).decode("utf-8")
+            credentials_dict = json.loads(credentials_json_str)
+            credential_path = "/tmp/google-credentials.json"
+            with open(credential_path, "w") as f:
                 json.dump(credentials_dict, f)
-            
-            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
-            logger.info("✅ Google Cloud credentials loaded from environment variable")
-            
-            # Initialize Translation client
-            self.translate_client = translate.Client()
-            logger.info("✅ Google Cloud Translation client initialized")
-            
-            # Initialize Text-to-Speech client
-            self.tts_client = texttospeech.TextToSpeechClient()
-            logger.info("✅ Google Cloud Text-to-Speech client initialized")
-            
-            # Initialize Romaji converter for Japanese
-            self.kakasi = pykakasi.kakasi()
-            logger.info("✅ Romaji converter initialized")
-            
-            # Test connection
-            self._test_connection()
-            
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credential_path
+            logger.info("Google Cloud credentials loaded successfully")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize clients: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
+            logger.error(f"Failed to decode BASE64 credentials: {e}")
+            self.translate_client = None
+            self.tts_client = None
+            return
+
+        try:
+            self.translate_client = translate.Client()
+            self.tts_client = texttospeech.TextToSpeechClient()
+            logger.info("Google Cloud clients initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize Google Cloud clients: {e}")
             self.translate_client = None
             self.tts_client = None
 
-    def _test_connection(self):
-        """Test translation service connection"""
-        try:
-            if self.translate_client:
-                # Simple test translation
-                test_result = self.translate_client.translate_text(
-                    source_language='en',
-                    target_language='hi',
-                    source_text='Hello'
-                )
-                logger.info("✅ Translation service connection successful")
-        except Exception as e:
-            logger.warning(f"⚠️ Translation test failed: {str(e)}")
+        self.kakasi = pykakasi.kakasi()
 
-    def translate(self, text: str, target_language: str, source_language: str = 'en') -> Optional[str]:
-        """Translate text using Google Cloud Translation API"""
+    def translate(self, text: str, target_language: str, source_language: str = "en") -> Optional[str]:
         if not self.translate_client:
-            logger.error("❌ Translation client not initialized")
+            logger.error("Translation client not initialized")
             return None
-        
         try:
-            if target_language not in self.supported_languages:
-                logger.warning(f"⚠️ Language {target_language} not supported, skipping translation")
-                return text
-            
-            result = self.translate_client.translate_text(
-                source_language=source_language,
+            result = self.translate_client.translate(
+                text,
                 target_language=target_language,
-                source_text=text
+                source_language=source_language
             )
-            
             return result['translatedText']
         except Exception as e:
-            logger.error(f"❌ Translation failed: {str(e)}")
+            logger.error(f"Translation failed: {e}")
             return None
 
     def text_to_speech(self, text: str, language_code: str, output_path: str) -> bool:
-        """Convert text to speech using Google Cloud TTS"""
         if not self.tts_client:
-            logger.error("❌ TTS client not initialized")
+            logger.error("TTS client not initialized")
             return False
-        
         try:
-            # Determine voice for language
-            if language_code == 'hi':
-                voice_name = 'hi-IN-Standard-A'
-            elif language_code == 'ta':
-                voice_name = 'ta-IN-Standard-A'
-            elif language_code == 'te':
-                voice_name = 'te-IN-Standard-A'
-            elif language_code == 'kn':
-                voice_name = 'kn-IN-Standard-A'
-            elif language_code == 'gu':
-                voice_name = 'gu-IN-Standard-A'
-            elif language_code == 'pt':
-                voice_name = 'pt-BR-Standard-A'
-            elif language_code == 'de':
-                voice_name = 'de-DE-Standard-A'
-            elif language_code == 'vi':
-                voice_name = 'vi-VN-Standard-A'
-            else:
-                voice_name = 'en-US-Standard-A'
-            
+            voice_name = {
+                "hi": "hi-IN-Standard-A",
+                "ta": "ta-IN-Standard-A",
+                "te": "te-IN-Standard-A",
+                "kn": "kn-IN-Standard-A",
+                "gu": "gu-IN-Standard-A",
+                "pt": "pt-BR-Standard-A",
+                "de": "de-DE-Standard-A",
+                "vi": "vi-VN-Standard-A",
+            }.get(language_code, "en-US-Standard-A")
             synthesis_input = texttospeech.SynthesisInput(text=text)
             voice = texttospeech.VoiceSelectionParams(
-                language_code=language_code,
-                name=voice_name
+                language_code=language_code, name=voice_name
             )
             audio_config = texttospeech.AudioConfig(
                 audio_encoding=texttospeech.AudioEncoding.MP3
             )
-            
             response = self.tts_client.synthesize_speech(
-                input=synthesis_input,
-                voice=voice,
-                audio_config=audio_config
+                input=synthesis_input, voice=voice, audio_config=audio_config
             )
-            
-            # Write audio to file
-            with open(output_path, 'wb') as out:
+            with open(output_path, "wb") as out:
                 out.write(response.audio_content)
-            
-            logger.info(f"✅ Text-to-Speech generated: {output_path}")
+            logger.info(f"Text-to-speech generated: {output_path}")
             return True
-            
         except Exception as e:
-            logger.error(f"❌ Text-to-Speech failed: {str(e)}")
+            logger.error(f"Text-to-Speech failed: {e}")
             return False
 
     def convert_to_romaji(self, text: str) -> str:
-        """Convert Japanese text to Romaji"""
         try:
             result = self.kakasi.convert(text)
-            romaji = ''.join([item['hepburn'] for item in result])
+            romaji = " ".join([item['hepburn'] for item in result])
             return romaji
         except Exception as e:
-            logger.error(f"❌ Romaji conversion failed: {str(e)}")
+            logger.error(f"Romaji conversion failed: {e}")
             return text
-
-    def get_supported_languages(self) -> Dict[str, str]:
-        """Return supported languages"""
-        return self.supported_languages
