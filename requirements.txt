@@ -1,10 +1,8 @@
-setuptools
-flask==3.0.0
-google-cloud-translate==3.12.1
-google-cloud-texttospeech==2.14.2
-python-dotenv==1.0.0
+Flask==2.3.0
 requests==2.31.0
-pyngrok==7.0.0
+python-dotenv==1.0.0
+google-cloud-translate==3.11.0
+google-cloud-texttospeech==2.14.0
+pykakasi==2.2.1
 gunicorn==21.2.0
-pykakasi==2.3.0
-setuptools<81
+Werkzeug==2.3.0
